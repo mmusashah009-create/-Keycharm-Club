@@ -47,7 +47,7 @@ adminHeader('Orders', 'orders');
                     <td>#<?= (int) $order['id'] ?></td>
                     <td><strong><?= escapeHtml($order['customer_name']) ?></strong><span><?= escapeHtml($order['customer_email']) ?></span></td>
                     <td><?= escapeHtml(date('M j, Y', strtotime($order['created_at']))) ?></td>
-                    <td>$<?= number_format((float) $order['total'], 2) ?></td>
+                    <td>Rs <?= number_format((float) $order['total'], 2) ?></td>
                     <td><span class="status-pill <?= escapeHtml($order['payment_status']) ?>"><?= escapeHtml(ucfirst($order['payment_status'])) ?></span></td>
                     <td><span class="status-pill <?= escapeHtml($order['order_status']) ?>"><?= escapeHtml(ucfirst($order['order_status'])) ?></span></td>
                     <td><a class="table-action" href="order.php?id=<?= (int) $order['id'] ?>">Details ↗</a></td>

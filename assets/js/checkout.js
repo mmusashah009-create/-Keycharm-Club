@@ -9,26 +9,39 @@
     let cart = {};
 
     try {
-        cart = JSON.parse(localStorage.getItem(storageKey) || '{}');
-        if (!cart || typeof cart !== 'object' || Array.isArray(cart)) cart = {};
+        const savedCart = JSON.parse(localStorage.getItem(storageKey) || '{}');
+        if (savedCart && typeof savedCart === 'object' && !Array.isArray(savedCart)) {
+            Object.entries(savedCart).forEach(([key, quantity]) => {
+                const [productId, savedVariantId] = key.split(':');
+                const product = products.get(productId);
+                const variantId = savedVariantId ?? String(product?.variants?.[0]?.id ?? 0);
+                if (product && /^\d+$/.test(variantId)) cart[`${productId}:${variantId}`] = quantity;
+            });
+        }
     } catch (error) {
         console.warn('The saved shopping bag could not be read.', error);
     }
 
-    const money = (cents) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
+    const money = (cents) => `Rs ${new Intl.NumberFormat('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(cents / 100)}`;
+    const productImageUrl = (image, options) => /^uploads\/products\/[a-f0-9]{32}\.(jpg|png|webp)$/.test(image)
+        ? image
+        : `https://images.unsplash.com/${encodeURIComponent(image)}?auto=format&fit=crop&${options}`;
+    const cartKey = (productId, variantId = 0) => `${productId}:${variantId}`;
     const orderLines = [];
     let subtotal = 0;
 
-    Object.entries(cart).forEach(([id, rawQuantity]) => {
+    Object.entries(cart).forEach(([key, rawQuantity]) => {
+        const [id, variantId] = key.split(':');
         const product = products.get(id);
         const quantity = Number(rawQuantity);
-        if (!product || !Number.isInteger(quantity) || quantity < 1 || quantity > 10) {
-            delete cart[id];
+        const variant = product?.variants?.find((option) => String(option.id) === variantId);
+        if (!product || (variantId !== '0' && !variant) || !Number.isInteger(quantity) || quantity < 1 || quantity > 10) {
+            delete cart[key];
             return;
         }
         const unitPriceCents = Math.round(Number(product.price) * 100);
         subtotal += unitPriceCents * quantity;
-        orderLines.push({ product, quantity, unitPriceCents });
+        orderLines.push({ product, variant, quantity, unitPriceCents });
     });
 
     const count = orderLines.reduce((sum, line) => sum + line.quantity, 0);
@@ -39,15 +52,15 @@
     document.querySelector('[data-checkout-shipping]').textContent = count === 0 ? '—' : (shippingCents === 0 ? 'Complimentary' : money(shippingCents));
     document.querySelector('[data-checkout-total]').textContent = money(totalCents);
 
-    orderLines.forEach(({ product, quantity, unitPriceCents }) => {
+    orderLines.forEach(({ product, variant, quantity, unitPriceCents }) => {
         const row = document.createElement('div');
         row.className = 'checkout-item';
         const image = document.createElement('img');
-        image.src = `https://images.unsplash.com/${encodeURIComponent(product.image)}?auto=format&fit=crop&w=180&q=76`;
+        image.src = productImageUrl(variant?.image ?? product.image, 'w=180&q=76');
         image.alt = '';
         const details = document.createElement('div');
         const name = document.createElement('p');
-        name.textContent = product.name;
+        name.textContent = variant ? `${product.name} · ${variant.color_name}` : product.name;
         const quantityLabel = document.createElement('span');
         quantityLabel.textContent = `Qty ${quantity}`;
         details.append(name, quantityLabel);
@@ -81,7 +94,7 @@
 
         const formData = new FormData(form);
         const customer = Object.fromEntries(formData.entries());
-        const items = orderLines.map(({ product, quantity }) => ({ id: product.id, quantity }));
+        const items = orderLines.map(({ product, variant, quantity }) => ({ id: product.id, variant_id: variant?.id ?? 0, quantity }));
         submitButton.disabled = true;
         submitButton.firstChild.textContent = 'Placing your order… ';
 

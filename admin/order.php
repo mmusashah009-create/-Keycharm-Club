@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     redirectTo('order.php?id=' . $orderId);
 }
 
-$itemsQuery = $pdo->prepare('SELECT product_name, product_image, unit_price, quantity, line_total FROM order_items WHERE order_id = :id ORDER BY id');
+$itemsQuery = $pdo->prepare('SELECT product_name, product_image, color_name, unit_price, quantity, line_total FROM order_items WHERE order_id = :id ORDER BY id');
 $itemsQuery->execute([':id' => $orderId]);
 $items = $itemsQuery->fetchAll();
 $validStatuses = ['new', 'processing', 'shipped', 'delivered', 'cancelled'];
@@ -57,16 +57,16 @@ adminHeader('Order #' . $orderId, 'orders');
         <h3 class="detail-subheading">Items ordered</h3>
         <?php foreach ($items as $item): ?>
             <article class="order-detail-item">
-                <img src="https://images.unsplash.com/<?= escapeHtml($item['product_image']) ?>?auto=format&amp;fit=crop&amp;w=180&amp;q=72" alt="">
-                <div><h3><?= escapeHtml($item['product_name']) ?></h3><p>$<?= number_format((float) $item['unit_price'], 2) ?> × <?= (int) $item['quantity'] ?></p></div>
-                <strong>$<?= number_format((float) $item['line_total'], 2) ?></strong>
+                <img src="<?= escapeHtml(productImageUrl((string) $item['product_image'])) ?><?= str_starts_with((string) $item['product_image'], 'photo-') ? '?auto=format&amp;fit=crop&amp;w=180&amp;q=72' : '' ?>" alt="">
+                <div><h3><?= escapeHtml($item['product_name']) ?></h3><p><?= $item['color_name'] !== '' ? 'Color: ' . escapeHtml($item['color_name']) . ' · ' : '' ?>Rs <?= number_format((float) $item['unit_price'], 2) ?> × <?= (int) $item['quantity'] ?></p></div>
+                <strong>Rs <?= number_format((float) $item['line_total'], 2) ?></strong>
             </article>
         <?php endforeach; ?>
         <div class="detail-totals">
-            <p><span>Subtotal</span><span>$<?= number_format((float) $order['subtotal'], 2) ?></span></p>
-            <p><span>Shipping</span><span><?= (float) $order['shipping'] === 0.0 ? 'Complimentary' : '$' . number_format((float) $order['shipping'], 2) ?></span></p>
-            <?php if ((float) $order['refunded_amount'] > 0): ?><p><span>Refunded on previous payment</span><span>−$<?= number_format((float) $order['refunded_amount'], 2) ?></span></p><?php endif; ?>
-            <p class="grand-total"><span>Total</span><strong>$<?= number_format((float) $order['total'], 2) ?> <?= escapeHtml(strtoupper($order['currency'])) ?></strong></p>
+            <p><span>Subtotal</span><span>Rs <?= number_format((float) $order['subtotal'], 2) ?></span></p>
+            <p><span>Shipping</span><span><?= (float) $order['shipping'] === 0.0 ? 'Complimentary' : 'Rs ' . number_format((float) $order['shipping'], 2) ?></span></p>
+            <?php if ((float) $order['refunded_amount'] > 0): ?><p><span>Refunded on previous payment</span><span>−Rs <?= number_format((float) $order['refunded_amount'], 2) ?></span></p><?php endif; ?>
+            <p class="grand-total"><span>Total</span><strong>Rs <?= number_format((float) $order['total'], 2) ?> PKR</strong></p>
         </div>
     </section>
     <aside class="admin-panel order-customer-panel">

@@ -7,7 +7,7 @@ $pdo = getDatabaseConnection();
 $stats = [
     'orders' => (int) $pdo->query('SELECT COUNT(*) FROM orders')->fetchColumn(),
     'pending' => (int) $pdo->query("SELECT COUNT(*) FROM orders WHERE payment_status = 'pending' AND payment_method = 'cash_on_delivery'")->fetchColumn(),
-    'products' => (int) $pdo->query('SELECT COUNT(*) FROM products WHERE is_active = 1')->fetchColumn(),
+    'products' => (int) $pdo->query("SELECT COUNT(*) FROM products WHERE is_active = 1 AND category = 'Keychains'")->fetchColumn(),
     'revenue' => (float) $pdo->query("SELECT COALESCE(SUM(total - refunded_amount), 0) FROM orders WHERE payment_status IN ('paid', 'partially_refunded', 'refunded')")->fetchColumn(),
 ];
 $recentOrders = $pdo->query(
@@ -21,7 +21,7 @@ adminHeader('Dashboard', 'dashboard');
     <article class="stat-card"><p>ALL ORDERS</p><strong><?= $stats['orders'] ?></strong><span>Orders received</span></article>
     <article class="stat-card"><p>COD TO COLLECT</p><strong><?= $stats['pending'] ?></strong><span>Orders awaiting cash on delivery</span></article>
     <article class="stat-card"><p>ACTIVE PRODUCTS</p><strong><?= $stats['products'] ?></strong><span>Available in the store</span></article>
-    <article class="stat-card"><p>COLLECTED REVENUE</p><strong>$<?= number_format($stats['revenue'], 2) ?></strong><span>Payments marked as received</span></article>
+    <article class="stat-card"><p>COLLECTED REVENUE</p><strong>Rs <?= number_format($stats['revenue'], 2) ?></strong><span>Payments marked as received</span></article>
 </section>
 <section class="admin-panel">
     <div class="panel-heading"><div><p class="eyebrow">THE LATEST</p><h2>Recent orders</h2></div><a class="admin-text-link" href="orders.php">All orders ↗</a></div>
@@ -36,7 +36,7 @@ adminHeader('Dashboard', 'dashboard');
                     <td>#<?= (int) $order['id'] ?></td>
                     <td><strong><?= escapeHtml($order['customer_name']) ?></strong><span><?= escapeHtml($order['customer_email']) ?></span></td>
                     <td><?= escapeHtml(date('M j, Y', strtotime($order['created_at']))) ?></td>
-                    <td>$<?= number_format((float) $order['total'], 2) ?></td>
+                    <td>Rs <?= number_format((float) $order['total'], 2) ?></td>
                     <td><span class="status-pill <?= escapeHtml($order['payment_status']) ?>"><?= escapeHtml(ucfirst($order['payment_status'])) ?></span></td>
                     <td><span class="status-pill <?= escapeHtml($order['order_status']) ?>"><?= escapeHtml(ucfirst($order['order_status'])) ?></span></td>
                     <td><a class="table-action" href="order.php?id=<?= (int) $order['id'] ?>">Details ↗</a></td>

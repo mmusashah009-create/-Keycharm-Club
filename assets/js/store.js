@@ -12,13 +12,41 @@
     const emptyResults = document.querySelector('.empty-results');
     const menuToggle = document.querySelector('.menu-toggle');
     const navigation = document.querySelector('#primary-navigation');
-    let activeCategory = 'All pieces';
+    let activeCategory = 'Keychains';
     let toastTimer;
     let cart = {};
 
+    const variantsFor = (card) => {
+        try {
+            const variants = JSON.parse(card.dataset.variants || '[]');
+            return Array.isArray(variants) ? variants : [];
+        } catch (error) {
+            console.error('A product color option could not be read.', error);
+            return [];
+        }
+    };
+    const imageUrl = (image) => /^uploads\/products\/[a-f0-9]{32}\.(jpg|png|webp)$/.test(image)
+        ? image
+        : /^photo-[a-zA-Z0-9-]{6,100}$/.test(image)
+            ? `https://images.unsplash.com/${encodeURIComponent(image)}?auto=format&fit=crop&w=900&q=82`
+            : '';
+    const cartKey = (productId, variantId = '0') => `${productId}:${variantId}`;
+
     try {
-        cart = JSON.parse(localStorage.getItem('noir-form-cart') || '{}');
-        if (!cart || typeof cart !== 'object' || Array.isArray(cart)) cart = {};
+        const savedCart = JSON.parse(localStorage.getItem('noir-form-cart') || '{}');
+        if (savedCart && typeof savedCart === 'object' && !Array.isArray(savedCart)) {
+            Object.entries(savedCart).forEach(([key, quantity]) => {
+                const [productId, variantId = '0'] = key.split(':');
+                const card = cards.find((item) => item.querySelector('[data-add-to-cart]').dataset.addToCart === productId);
+                if (!card) return;
+                const variants = variantsFor(card);
+                const normalizedVariantId = key.includes(':') ? variantId : String(variants[0]?.id ?? 0);
+                if (card && /^\d+$/.test(productId) && /^\d+$/.test(normalizedVariantId)) {
+                    const knownVariant = normalizedVariantId === '0' || variants.some((variant) => String(variant.id) === normalizedVariantId);
+                    if (knownVariant) cart[cartKey(productId, normalizedVariantId)] = quantity;
+                }
+            });
+        }
     } catch (error) {
         console.warn('The saved shopping bag could not be read.', error);
     }
@@ -36,18 +64,20 @@
         cartItems.replaceChildren();
         let subtotal = 0;
 
-        Object.entries(cart).forEach(([productId, quantity]) => {
+        Object.entries(cart).forEach(([key, quantity]) => {
+            const [productId, variantId] = key.split(':');
             const card = cards.find((item) => item.querySelector('[data-add-to-cart]').dataset.addToCart === productId);
             const count = Number(quantity);
             if (!card || !Number.isInteger(count) || count <= 0) return;
 
+            const variant = variantsFor(card).find((item) => String(item.id) === variantId);
             const price = Number(card.dataset.price);
             subtotal += price * count;
             const row = document.createElement('article');
             row.className = 'cart-item';
 
             const image = document.createElement('img');
-            image.src = card.querySelector('.product-image-wrap img').src;
+            image.src = variant ? imageUrl(variant.image) : card.dataset.defaultImage;
             image.alt = '';
 
             const details = document.createElement('div');
@@ -55,26 +85,26 @@
             const name = document.createElement('h3');
             name.textContent = card.dataset.name;
             const category = document.createElement('p');
-            category.textContent = card.dataset.category;
+            category.textContent = variant ? `${card.dataset.category} · ${variant.color_name}` : card.dataset.category;
             const priceLabel = document.createElement('p');
             priceLabel.className = 'cart-item-price';
-            priceLabel.textContent = `$${price.toFixed(0)}`;
+            priceLabel.textContent = `Rs ${price.toFixed(0)}`;
 
             const controls = document.createElement('div');
             controls.className = 'cart-item-controls';
             const decrease = document.createElement('button');
             decrease.type = 'button';
             decrease.dataset.cartAction = 'decrease';
-            decrease.dataset.productId = productId;
-            decrease.setAttribute('aria-label', `Remove one ${card.dataset.name}`);
+            decrease.dataset.cartKey = key;
+            decrease.setAttribute('aria-label', `Remove one ${card.dataset.name}${variant ? ` in ${variant.color_name}` : ''}`);
             decrease.textContent = '−';
             const quantityLabel = document.createElement('span');
             quantityLabel.textContent = String(count);
             const increase = document.createElement('button');
             increase.type = 'button';
             increase.dataset.cartAction = 'increase';
-            increase.dataset.productId = productId;
-            increase.setAttribute('aria-label', `Add one ${card.dataset.name}`);
+            increase.dataset.cartKey = key;
+            increase.setAttribute('aria-label', `Add one ${card.dataset.name}${variant ? ` in ${variant.color_name}` : ''}`);
             increase.textContent = '+';
             controls.append(decrease, quantityLabel, increase);
             details.append(name, category, priceLabel, controls);
@@ -83,7 +113,7 @@
             remove.className = 'cart-item-remove';
             remove.type = 'button';
             remove.dataset.cartAction = 'remove';
-            remove.dataset.productId = productId;
+            remove.dataset.cartKey = key;
             remove.textContent = 'Remove';
             row.append(image, details, remove);
             cartItems.append(row);
@@ -92,7 +122,7 @@
         const count = totalItems();
         cartEmpty.hidden = count !== 0;
         document.querySelector('.cart-footer').hidden = count === 0;
-        document.querySelector('[data-cart-subtotal]').textContent = `$${subtotal.toFixed(0)}`;
+        document.querySelector('[data-cart-subtotal]').textContent = `Rs ${subtotal.toFixed(0)}`;
         updateCartCount();
     };
 
@@ -121,11 +151,34 @@
         toastTimer = window.setTimeout(() => toast.classList.remove('visible'), 2400);
     };
 
+    cards.forEach((card) => {
+        const firstVariant = variantsFor(card)[0];
+        card.dataset.selectedVariant = firstVariant ? String(firstVariant.id) : '0';
+        if (!firstVariant) return;
+        card.querySelector('[data-product-image]').src = imageUrl(firstVariant.image);
+        card.querySelector('[data-selected-color]').textContent = firstVariant.color_name;
+        card.querySelectorAll('[data-color-variant]').forEach((button) => {
+            button.setAttribute('aria-pressed', String(button.dataset.colorVariant === String(firstVariant.id)));
+        });
+    });
+
+    document.querySelectorAll('[data-color-variant]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const card = button.closest('.product-card');
+            card.dataset.selectedVariant = button.dataset.colorVariant;
+            card.querySelector('[data-product-image]').src = button.dataset.colorImage;
+            card.querySelector('[data-selected-color]').textContent = button.dataset.colorName;
+            card.querySelectorAll('[data-color-variant]').forEach((option) => {
+                option.setAttribute('aria-pressed', String(option === button));
+            });
+        });
+    });
+
     const applyFilters = () => {
         const query = searchInput.value.trim().toLowerCase();
         let visibleCount = 0;
         cards.forEach((card) => {
-            const categoryMatches = activeCategory === 'All pieces' || card.dataset.category === activeCategory;
+            const categoryMatches = card.dataset.category === activeCategory;
             const searchMatches = !query || card.dataset.name.toLowerCase().includes(query);
             card.hidden = !(categoryMatches && searchMatches);
             if (!card.hidden) visibleCount++;
@@ -180,12 +233,14 @@
     document.querySelectorAll('[data-add-to-cart]').forEach((button) => {
         button.addEventListener('click', () => {
             const productId = button.dataset.addToCart;
-            const quantity = Number(cart[productId]) || 0;
+            const variantId = button.closest('.product-card').dataset.selectedVariant || '0';
+            const key = cartKey(productId, variantId);
+            const quantity = Number(cart[key]) || 0;
             if (quantity >= 10) {
                 showToast('The maximum quantity for each piece is 10.');
                 return;
             }
-            cart[productId] = quantity + 1;
+            cart[key] = quantity + 1;
             saveCart();
             showToast('Added to your bag. Good choice.');
         });
@@ -223,14 +278,14 @@
     cartItems.addEventListener('click', (event) => {
         const button = event.target.closest('[data-cart-action]');
         if (!button) return;
-        const productId = button.dataset.productId;
-        const current = Number(cart[productId]) || 0;
+        const key = button.dataset.cartKey;
+        const current = Number(cart[key]) || 0;
         if (button.dataset.cartAction === 'remove' || (button.dataset.cartAction === 'decrease' && current <= 1)) {
-            delete cart[productId];
+            delete cart[key];
         } else if (button.dataset.cartAction === 'decrease') {
-            cart[productId] = current - 1;
+            cart[key] = current - 1;
         } else if (current < 10) {
-            cart[productId] = current + 1;
+            cart[key] = current + 1;
         } else {
             showToast('The maximum quantity for each piece is 10.');
         }
@@ -255,7 +310,8 @@
         });
     });
 
-    document.querySelector('[data-sort-toggle]').addEventListener('click', (event) => {
+    const sortToggle = document.querySelector('[data-sort-toggle]');
+    if (sortToggle) sortToggle.addEventListener('click', (event) => {
         const button = event.currentTarget;
         const ascending = button.dataset.sort !== 'price-low';
         button.dataset.sort = ascending ? 'price-low' : 'featured';
@@ -275,5 +331,6 @@
         event.currentTarget.reset();
     });
 
+    applyFilters();
     renderCart();
 })();

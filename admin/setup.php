@@ -74,16 +74,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Create your admin account — NOIR &amp; FORM</title>
+    <title>Create your admin account — Pop Shop</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/css/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Pacifico&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/style.css?v=<?= filemtime(__DIR__ . '/../assets/css/style.css') ?>">
+    <link rel="stylesheet" href="../assets/css/admin.css?v=<?= filemtime(__DIR__ . '/../assets/css/admin.css') ?>">
 </head>
 <body class="bg-ink text-paper auth-page">
     <main class="auth-card">
-        <a class="wordmark" href="../index.php">NOIR<span>&amp;</span>FORM<span class="wordmark-period">.</span></a>
+        <a class="wordmark" href="../index.php">Pop Shop</a>
         <p class="eyebrow">ONE-TIME STORE SETUP</p>
         <h1>Create your <em>admin.</em></h1>
         <p class="auth-intro">Create the first administrator account on this computer. You choose the admin password; this one-time form automatically closes after the account is created.</p>
@@ -98,5 +98,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </form>
         <a class="auth-back" href="../index.php">← Back to storefront</a>
     </main>
+    <script src="../assets/js/motion.js" defer></script>
 </body>
 </html>

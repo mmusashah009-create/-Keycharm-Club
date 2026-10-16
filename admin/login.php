@@ -50,16 +50,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Admin sign in — NOIR &amp; FORM</title>
+    <title>Admin sign in — Pop Shop</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/css/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Pacifico&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/style.css?v=<?= filemtime(__DIR__ . '/../assets/css/style.css') ?>">
+    <link rel="stylesheet" href="../assets/css/admin.css?v=<?= filemtime(__DIR__ . '/../assets/css/admin.css') ?>">
 </head>
 <body class="bg-ink text-paper auth-page">
     <main class="auth-card">
-        <a class="wordmark" href="../index.php">NOIR<span>&amp;</span>FORM<span class="wordmark-period">.</span></a>
+        <a class="wordmark" href="../index.php">Pop Shop</a>
         <p class="eyebrow">THE CONTROL ROOM</p>
         <h1>Good to have<br>you <em>back.</em></h1>
         <p class="auth-intro">Sign in to manage your products and orders.</p>
@@ -73,5 +73,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php if (!$adminSetupComplete): ?><a class="auth-back" href="setup.php">Create the first admin account ↗</a><?php endif; ?>
         <a class="auth-back" href="../index.php">← Back to storefront</a>
     </main>
+    <script src="../assets/js/motion.js" defer></script>
 </body>
 </html>

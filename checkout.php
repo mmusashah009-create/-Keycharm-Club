@@ -20,7 +20,25 @@ $orderNumber = $order !== null ? 'NF-' . str_pad((string) $order['id'], 6, '0', 
 $products = [];
 if ($order === null) {
     $pdo = getDatabaseConnection();
-    $products = $pdo->query('SELECT id, name, price, image FROM products WHERE is_active = 1 ORDER BY sort_order ASC, id ASC')->fetchAll();
+    $products = $pdo->query("SELECT id, name, category, price, image FROM products WHERE is_active = 1 AND category = 'Keychains' ORDER BY sort_order ASC, id ASC")->fetchAll();
+    $variantRows = $pdo->query(
+        "SELECT v.id, v.product_id, v.color_name, v.color_hex, v.image
+         FROM product_variants v
+         JOIN products p ON p.id = v.product_id
+         WHERE p.is_active = 1 AND p.category = 'Keychains'
+         ORDER BY v.sort_order, v.id"
+    )->fetchAll();
+    $variantsByProduct = [];
+    foreach ($variantRows as $variant) {
+        $variant['id'] = (int) $variant['id'];
+        $productId = (int) $variant['product_id'];
+        unset($variant['product_id']);
+        $variantsByProduct[$productId][] = $variant;
+    }
+    foreach ($products as &$product) {
+        $product['variants'] = $variantsByProduct[(int) $product['id']] ?? [];
+    }
+    unset($product);
     if (!isset($_SESSION['checkout_submission_token'])) {
         $_SESSION['checkout_submission_token'] = bin2hex(random_bytes(32));
     }
@@ -33,18 +51,18 @@ $catalogJson = json_encode($products, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AM
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="<?= escapeHtml(csrfToken()) ?>">
-    <meta name="theme-color" content="#111210">
-    <title><?= $order !== null ? 'Order received' : 'Checkout' ?> — NOIR &amp; FORM</title>
+    <meta name="theme-color" content="#fff8ed">
+    <title><?= $order !== null ? 'Order received' : 'Checkout' ?> — Pop Shop</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/style.css">
-    <link rel="stylesheet" href="assets/css/pages.css">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Pacifico&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css?v=<?= filemtime(__DIR__ . '/assets/css/style.css') ?>">
+    <link rel="stylesheet" href="assets/css/pages.css?v=<?= filemtime(__DIR__ . '/assets/css/pages.css') ?>">
 </head>
 <body class="bg-ink text-paper">
     <header class="site-header">
         <div class="header-main page-header">
-            <a class="wordmark" href="index.php">NOIR<span>&amp;</span>FORM<span class="wordmark-period">.</span></a>
+            <a class="wordmark" href="index.php">Pop Shop</a>
             <span class="secure-label">CASH ON DELIVERY</span>
             <a class="page-back-bag" href="cart.php">← Your bag</a>
         </div>
@@ -58,7 +76,7 @@ $catalogJson = json_encode($products, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AM
                     <span>Your order number</span>
                     <strong><?= escapeHtml($orderNumber) ?></strong>
                 </div>
-                <p>Hi, <?= escapeHtml($order['customer_name']) ?>. Your order is confirmed. Pay $<?= number_format((float) $order['total'], 2) ?> in cash when it arrives.</p>
+                <p>Hi, <?= escapeHtml($order['customer_name']) ?>. Your order is confirmed. Pay Rs <?= number_format((float) $order['total'], 2) ?> in cash when it arrives.</p>
                 <p class="tax-note">Keep this number for your records and have the order total ready when it is delivered.</p>
                 <a class="checkout-link" href="index.php">Back to the collection <span aria-hidden="true">↗</span></a>
             </section>
@@ -90,10 +108,10 @@ $catalogJson = json_encode($products, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AM
                 <aside class="order-summary" aria-labelledby="checkout-summary-title">
                     <h2 id="checkout-summary-title">Your order <span data-checkout-count></span></h2>
                     <div class="checkout-items" data-checkout-items></div>
-                    <div class="summary-row"><span>Subtotal</span><span data-checkout-subtotal>$0.00</span></div>
+                    <div class="summary-row"><span>Subtotal</span><span data-checkout-subtotal>Rs 0.00</span></div>
                     <div class="summary-row"><span>Shipping</span><span data-checkout-shipping>—</span></div>
-                    <div class="summary-row summary-total"><span>Total</span><span data-checkout-total>$0.00</span></div>
-                    <p class="tax-note">Prices are in USD. Pay in cash when your order is delivered.</p>
+                    <div class="summary-row summary-total"><span>Total</span><span data-checkout-total>Rs 0.00</span></div>
+                    <p class="tax-note">Prices are in Pakistani rupees (PKR). Pay in cash when your order is delivered.</p>
                 </aside>
             </div>
         <?php endif; ?>
@@ -101,9 +119,10 @@ $catalogJson = json_encode($products, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AM
     <?php if ($order === null): ?>
         <script type="application/json" id="product-catalog"><?= $catalogJson ?></script>
         <script>document.querySelector('#product-catalog').dataset.checkoutToken = <?= json_encode($_SESSION['checkout_submission_token'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_THROW_ON_ERROR) ?>;</script>
-        <script src="assets/js/checkout.js" defer></script>
+        <script src="assets/js/checkout.js?v=<?= filemtime(__DIR__ . '/assets/js/checkout.js') ?>" defer></script>
     <?php else: ?>
         <script>try { localStorage.removeItem('noir-form-cart'); } catch (error) { console.warn('The completed bag could not be cleared.', error); }</script>
     <?php endif; ?>
+    <script src="assets/js/motion.js" defer></script>
 </body>
 </html>
